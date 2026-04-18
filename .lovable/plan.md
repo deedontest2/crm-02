@@ -1,102 +1,79 @@
 
 
-## Why every page feels slow — what I found
+# Campaign Overview Page — Visual & Layout Overhaul
 
-Confirmed from network logs + code review:
+## Bugs & Issues Found
 
-**1. `useYearlyRevenueData` and `useDashboardStats` fetch ALL deals with `select('*')`, no `.limit()`, no `.range()`.** Filtering by year is then done client-side in JavaScript. With several hundred deals each, the dashboard pulls a massive payload twice on every visit, then loops through it 5+ times. This is the single biggest dashboard slowdown.
+1. **Tiny fonts everywhere** — KPI labels at `text-[10px]`, section titles `text-xs`, values `text-lg`. Inconsistent with other modules (Deals/Contacts use `text-sm`/`text-base`/`text-xl`).
+2. **Cramped spacing** — `gap-2`, `p-2`, `py-2` headers feel squeezed. Other modules use `gap-4`/`p-4`/`py-3`.
+3. **Weak boundaries** — All cards use the same plain `border` with no color accent. The dashboard list page (`CampaignDashboard.tsx`) already uses colored `border-l-4` accents — overview doesn't match.
+4. **No color in KPIs** — All 6 KPI cards are monochrome muted gray. Dashboard uses indigo/emerald/blue/amber/slate colored icon tiles + colored values.
+5. **Width not used** — Container has `p-4 pt-2 pb-3` from parent (CampaignDetail line 218) and child uses default — wide screens (1558px) leave huge empty bottom space and KPI strip looks stretched-thin without visual weight.
+6. **Campaign Details section is plain text** — labels and values stacked weirdly ("Type ... Cold Outreach" with huge gap, "Region" badges floating right). Looks like a config dump not a polished detail card.
+7. **Recent Activity rows are too dense** — `text-xs` with `h-4` badges, single-line cramped, hard to scan.
+8. **Contact Funnel bars are 2px thin** (`h-2`) — barely visible.
+9. **No section icons with color** — icons all `text-muted-foreground`, no hierarchy.
+10. **Outreach Timeline chart hidden** — only shows when ≥3 weeks of data; should always show with empty state.
+11. **No visual separation** between KPI strip, charts, and details — everything blends.
 
-**2. `useCampaigns` always fetches all campaigns + the entire `campaign_mart` table on app mount** because `CampaignDashboardWidget` and `<Campaigns>` page both call it. There's no `staleTime`, so every navigation refetches.
+## Improvements Plan — `src/components/campaigns/CampaignOverview.tsx`
 
-**3. `DealsPage` calls `fetchAllRecords('deals')` — paginates every 1000 rows in a loop until done.** For all deals at once. Used both for the Kanban and List views even though both paginate client-side.
+### A. KPI Strip (top row)
+- Increase card padding to `p-4`, gap to `gap-3`
+- Add colored `border-l-4` accents per KPI (matching dashboard convention):
+  - Accounts → `border-l-blue-500` + blue icon tile
+  - Contacts → `border-l-emerald-500` + emerald icon tile
+  - Outreach → `border-l-purple-500` + purple icon tile
+  - Responses → `border-l-amber-500` + amber icon tile
+  - Deals → `border-l-indigo-500` + indigo icon tile
+  - Setup → `border-l-rose-500` + rose icon tile
+- Icon in a colored rounded tile (`h-10 w-10 rounded-lg bg-{color}-100`) like dashboard
+- Label `text-xs uppercase tracking-wide`, Value `text-2xl font-bold`, sub `text-xs`
+- Add subtle `hover:shadow-md transition-all`
 
-**4. `useActionItems` fetches up to 5000 rows every time the filter object changes**, and the query key is `['action_items', filters]` (the entire object), so any filter tweak refetches the full set.
+### B. Contact Funnel card
+- Title `text-base font-semibold` with colored Users icon (emerald)
+- Stage rows: bar height `h-3`, label `text-sm`, count `text-sm font-medium tabular-nums`
+- Color-coded stage bars: Not Contacted (slate), Contacted (blue), Responded (amber), Qualified (purple), Converted (emerald)
+- Card padding `p-5`, header `pb-3`
 
-**5. `AccountTable` makes a second query to `contacts` for every visible page** to count linked contacts (the network log shows a 200-name `IN(...)` query of ~600 rows just for the contact-count badge). It runs again on every page change.
+### C. Recent Activity card
+- Title `text-base font-semibold` with colored MessageSquare icon (purple)
+- Each row: `py-2`, type badge color-coded by communication type (Email=blue, Call=green, LinkedIn=indigo)
+- Contact name `text-sm font-medium`, snippet `text-sm text-muted-foreground`
+- Row hover: `hover:bg-muted/50 rounded-md`
+- Add divider lines between rows for clarity
 
-**6. `useUserDisplayNames` calls the `fetch-user-display-names` edge function on every component that needs names** (Accounts, Contacts, Campaigns, CampaignDetail, ActionItems all do it independently). Network log shows duplicate POSTs with the same user IDs back-to-back. Not deduped across components, not cached in React Query.
+### D. Outreach Timeline
+- Always render (with empty state "No outreach activity yet")
+- Increase height `h-[180px]`, axis ticks `fontSize: 12`
+- Header same `text-base font-semibold` + colored BarChart3 icon (indigo)
 
-**7. No React Query caching defaults.** `new QueryClient()` is created with no `staleTime`/`gcTime`, so navigating Dashboard → Campaigns → Dashboard refetches everything immediately.
+### E. Campaign Details card — major restructure
+- Two-column responsive grid using proper definition-list styling:
+  - Left col: Type, Status, Region (with badge wrapping)
+  - Right col: Description, Goal, Notes (multi-line text blocks with bg-muted/30 rounded boxes)
+- Each detail block: label `text-xs uppercase tracking-wide text-muted-foreground mb-1`, value `text-sm`
+- Status badge larger `h-6 px-2.5 text-xs`
+- Region badges `h-6 px-2.5 text-xs` with subtle background color
 
-**8. `useColumnPreferences` and `useDealsColumnPreferences` fire a Supabase request for every table mount** (one per `(user_id, module)` row). Not cached via React Query, so flipping between tabs re-queries.
+### F. Layout & spacing
+- Container: `space-y-4 p-1` (parent already pads)
+- Use `grid-cols-12` for charts row to better balance Funnel (col-span-7) + Activity (col-span-5)
+- Ensure the page fills available width — remove unnecessary `max-w` constraints
+- Update parent `CampaignDetail.tsx` line 218: change `px-4 pt-2 pb-3` → `px-6 pt-3 pb-4` for breathing room consistent with other module pages
 
-**9. `Dashboard` is eager-loaded but pulls in `YearlyRevenueSummary` + `CampaignDashboardWidget` immediately** — both fire 4–6 queries before the first paint.
+### G. Tabs (CampaignDetail.tsx)
+- Increase tab height from `h-8`/`h-7` to `h-10`/`h-9`, font from `text-xs` to `text-sm` for consistency with rest of app
+- Header (`h-16`): increase title to `text-xl font-semibold`, subtitle `text-sm`
 
-**10. Excessive console.log spam in hot paths** (`useYearlyRevenueData`, `useUserDisplayNames`) — minor but real cost on slow devices.
+## Files to Edit
+| File | Change |
+|---|---|
+| `src/components/campaigns/CampaignOverview.tsx` | Full visual rewrite: bigger fonts, colored borders, colored icon tiles, restructured Details card, always-show timeline |
+| `src/pages/CampaignDetail.tsx` | Larger tabs (`h-10`, `text-sm`), larger header title (`text-xl`), wider container padding (`px-6`) |
 
----
-
-## Plan
-
-### 1. Add sane React Query defaults (one-line, biggest win)
-In `src/App.tsx`, configure the `QueryClient` with:
-- `staleTime: 5 * 60 * 1000` (5 min)
-- `gcTime: 10 * 60 * 1000`
-- `refetchOnWindowFocus: false`
-- `retry: 1`
-
-This alone removes 60–80% of the redundant requests when the user navigates between pages.
-
-### 2. Move dashboard aggregation to the database (eliminate full-table scans)
-In `src/hooks/useYearlyRevenueData.tsx`:
-- Replace `select('*')` with a year-filtered query: `.or('expected_closing_date.gte.YYYY-01-01,signed_contract_date.gte.YYYY-01-01').lte(...)` and select only the fields actually used (`stage`, `total_revenue`, `total_contract_value`, `quarterly_revenue_q1..q4`, `expected_closing_date`).
-- Add `staleTime: 5 * 60 * 1000`.
-- Strip the 20+ `console.log` calls.
-- `useDashboardStats` and `useAvailableYears`: same — narrow `select`, limit fields, add staleTime.
-
-### 3. Eager-load only what the first page needs; lazy-load Dashboard widgets
-- Keep `Dashboard` route eager but lazy-import `CampaignDashboardWidget` inside it via `React.lazy` + `Suspense` so it doesn't block first paint.
-- Lazy-load `YearlyRevenueSummary` with a Skeleton fallback.
-
-### 4. Cache user display names through React Query
-Rewrite `useUserDisplayNames`:
-- Use `useQuery` keyed on the sorted user-id list with `staleTime: Infinity` (names rarely change).
-- Use a single shared module-level `Map` cache so multiple hooks in the same render hit only one edge-function POST.
-- This kills the duplicate POSTs visible in network logs.
-
-### 5. Cache column preferences via React Query
-Wrap both `useColumnPreferences` and `useDealsColumnPreferences` in `useQuery` with `staleTime: Infinity` and key on `[user.id, moduleName]`. Mutations invalidate the key. Eliminates the per-mount round-trip.
-
-### 6. Fix Accounts contact-count
-In `src/components/AccountTable.tsx`:
-- Replace the per-page `.in('company_name', ...)` payload-of-600-rows query with a single grouped count: use `supabase.rpc()` or `.select('company_name', { count: 'exact' })` with `.in()` then group client-side **only on the names of the current 50 visible rows** (already does), but switch to selecting only `company_name` and apply React Query caching keyed on the visible names.
-- Better: create a Postgres view/RPC `account_contact_counts` returning `(account_name, count)` and call it once with the page's account names.
-
-### 7. Reduce Action Items query size
-In `src/hooks/useActionItems.tsx`:
-- Drop `.limit(5000)` to `.limit(500)` for the default view (UI paginates client-side anyway).
-- Stable query key: hash filter values into a small key, not the whole object.
-
-### 8. Slim Campaigns + Campaign Mart fetch
-- `useCampaigns` strategyQuery: select only the boolean flags + `campaign_id` instead of `select('*')`.
-- Add `staleTime: 2 * 60 * 1000`.
-- `CampaignDashboardWidget`: same — request only fields it uses.
-
-### 9. Deals page: stop fetching all rows on mount
-In `src/pages/DealsPage.tsx`:
-- Use server pagination (`fetchPaginatedData`) for the List view (already supported by `supabasePagination.ts`).
-- For Kanban, fetch all rows — but only fields needed for cards (project_name, stage, total_contract_value, lead_owner, expected_closing_date, priority) instead of `select('*')`.
-- Wrap the deals query in React Query so view switches don't refetch.
-
-### 10. Trim console noise
-Remove the verbose `console.log` blocks in `useYearlyRevenueData`, `useUserDisplayNames`, and `useAuth`. They run on every render in dev preview and on production when devtools are open.
-
-### Files to change
-- `src/App.tsx` — QueryClient defaults
-- `src/hooks/useYearlyRevenueData.tsx` — narrow selects, server-side year filter, staleTime, drop logs
-- `src/hooks/useUserDisplayNames.tsx` — useQuery + shared cache
-- `src/hooks/useColumnPreferences.tsx` — useQuery cache
-- `src/hooks/useDealsColumnPreferences.tsx` — useQuery cache
-- `src/hooks/useCampaigns.tsx` — narrow selects, staleTime
-- `src/hooks/useActionItems.tsx` — limit, stable key
-- `src/components/dashboard/CampaignDashboardWidget.tsx` — narrow selects
-- `src/components/AccountTable.tsx` — switch contact-count to a cached query keyed on visible names
-- `src/pages/Dashboard.tsx` — lazy import widgets
-- `src/pages/DealsPage.tsx` — narrow `select`, wrap in React Query
-
-### Expected result
-- First Dashboard paint goes from ~3–5s to ~600ms (no full-table deal scans, no campaign_mart over-fetch).
-- Page-to-page navigation feels instant: cached data is reused for 5 minutes; only changed data refetches.
-- Network requests on a typical session drop from ~30+ to ~8–10.
-- No code-splitting regression — all pages still lazy-loaded.
+## Out of Scope
+- No data/feature changes — purely visual refinement
+- Setup / Monitoring / Action Items tabs untouched (separate request if needed)
 
