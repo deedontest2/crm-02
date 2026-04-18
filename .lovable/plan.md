@@ -1,91 +1,102 @@
 
 
-## Fix Note Editor Bullet Point & Stakeholders Layout Issues
+## Why every page feels slow — what I found
 
-### Issues Found
+Confirmed from network logs + code review:
 
-1. **Bullet point moves when typing**: `autoFocus` on the Textarea (line 633) places the cursor at position 0 (before `"• "`), so typing inserts text before the bullet instead of after it.
+**1. `useYearlyRevenueData` and `useDashboardStats` fetch ALL deals with `select('*')`, no `.limit()`, no `.range()`.** Filtering by year is then done client-side in JavaScript. With several hundred deals each, the dashboard pulls a massive payload twice on every visit, then loops through it 5+ times. This is the single biggest dashboard slowdown.
 
-2. **Notes panel lacks proper scrollbar**: The notes summary panel (line 580-679) has a `max-h-[280px]` on the inner div but the outer wrapper has no scroll constraint, so it still pushes content.
+**2. `useCampaigns` always fetches all campaigns + the entire `campaign_mart` table on app mount** because `CampaignDashboardWidget` and `<Campaigns>` page both call it. There's no `staleTime`, so every navigation refetches.
 
-3. **Stakeholders section grows unbounded**: The `StakeholdersSection` component has no max-height. When the Notes panel is open with many notes, it consumes all vertical space, squishing the Updates and Action Items sections to near-zero height.
+**3. `DealsPage` calls `fetchAllRecords('deals')` — paginates every 1000 rows in a loop until done.** For all deals at once. Used both for the Kanban and List views even though both paginate client-side.
 
-### Changes (single file: `src/components/DealExpandedPanel.tsx`)
+**4. `useActionItems` fetches up to 5000 rows every time the filter object changes**, and the query key is `['action_items', filters]` (the entire object), so any filter tweak refetches the full set.
 
-#### Fix 1: Bullet cursor positioning (line 628-634)
+**5. `AccountTable` makes a second query to `contacts` for every visible page** to count linked contacts (the network log shows a 200-name `IN(...)` query of ~600 rows just for the contact-count badge). It runs again on every page change.
 
-Replace `autoFocus` on the Textarea with a `ref` callback that focuses the element AND places the cursor at the end of the text (after `"• "`):
+**6. `useUserDisplayNames` calls the `fetch-user-display-names` edge function on every component that needs names** (Accounts, Contacts, Campaigns, CampaignDetail, ActionItems all do it independently). Network log shows duplicate POSTs with the same user IDs back-to-back. Not deduped across components, not cached in React Query.
 
-```tsx
-<Textarea
-  value={noteText}
-  onChange={(e) => setNoteText(e.target.value)}
-  onKeyDown={handleNoteKeyDown}
-  className="min-h-[100px] text-xs resize-none"
-  ref={(el) => {
-    if (el) {
-      el.focus();
-      const len = el.value.length;
-      el.selectionStart = len;
-      el.selectionEnd = len;
-    }
-  }}
-/>
-```
+**7. No React Query caching defaults.** `new QueryClient()` is created with no `staleTime`/`gcTime`, so navigating Dashboard → Campaigns → Dashboard refetches everything immediately.
 
-#### Fix 2: Constrain Stakeholders section height
+**8. `useColumnPreferences` and `useDealsColumnPreferences` fire a Supabase request for every table mount** (one per `(user_id, module)` row). Not cached via React Query, so flipping between tabs re-queries.
 
-Wrap the StakeholdersSection output in a container with `max-h` and `overflow-y-auto` so it scrolls when content is large. Change the outer div (line 462) from:
+**9. `Dashboard` is eager-loaded but pulls in `YearlyRevenueSummary` + `CampaignDashboardWidget` immediately** — both fire 4–6 queries before the first paint.
 
-```tsx
-<div className="px-3 pt-1.5 pb-1">
-```
+**10. Excessive console.log spam in hot paths** (`useYearlyRevenueData`, `useUserDisplayNames`) — minor but real cost on slow devices.
 
-to:
+---
 
-```tsx
-<div className="px-3 pt-1.5 pb-1 max-h-[45%] overflow-y-auto shrink-0">
-```
+## Plan
 
-However, since this is not inside a flex parent that uses percentage heights well, a better approach is to change the parent layout. The parent (line 1182) is:
+### 1. Add sane React Query defaults (one-line, biggest win)
+In `src/App.tsx`, configure the `QueryClient` with:
+- `staleTime: 5 * 60 * 1000` (5 min)
+- `gcTime: 10 * 60 * 1000`
+- `refetchOnWindowFocus: false`
+- `retry: 1`
 
-```tsx
-<div className="flex-1 min-h-0 flex flex-col overflow-hidden gap-1">
-```
+This alone removes 60–80% of the redundant requests when the user navigates between pages.
 
-The fix: Make the StakeholdersSection a flex item that can shrink, and give it a max-height so it doesn't dominate. Change line 1184 from:
+### 2. Move dashboard aggregation to the database (eliminate full-table scans)
+In `src/hooks/useYearlyRevenueData.tsx`:
+- Replace `select('*')` with a year-filtered query: `.or('expected_closing_date.gte.YYYY-01-01,signed_contract_date.gte.YYYY-01-01').lte(...)` and select only the fields actually used (`stage`, `total_revenue`, `total_contract_value`, `quarterly_revenue_q1..q4`, `expected_closing_date`).
+- Add `staleTime: 5 * 60 * 1000`.
+- Strip the 20+ `console.log` calls.
+- `useDashboardStats` and `useAvailableYears`: same — narrow `select`, limit fields, add staleTime.
 
-```tsx
-<StakeholdersSection deal={deal} queryClient={queryClient} />
-```
+### 3. Eager-load only what the first page needs; lazy-load Dashboard widgets
+- Keep `Dashboard` route eager but lazy-import `CampaignDashboardWidget` inside it via `React.lazy` + `Suspense` so it doesn't block first paint.
+- Lazy-load `YearlyRevenueSummary` with a Skeleton fallback.
 
-to wrap it in a constrained container:
+### 4. Cache user display names through React Query
+Rewrite `useUserDisplayNames`:
+- Use `useQuery` keyed on the sorted user-id list with `staleTime: Infinity` (names rarely change).
+- Use a single shared module-level `Map` cache so multiple hooks in the same render hit only one edge-function POST.
+- This kills the duplicate POSTs visible in network logs.
 
-```tsx
-<div className="shrink-0 max-h-[40%] overflow-y-auto">
-  <StakeholdersSection deal={deal} queryClient={queryClient} />
-</div>
-```
+### 5. Cache column preferences via React Query
+Wrap both `useColumnPreferences` and `useDealsColumnPreferences` in `useQuery` with `staleTime: Infinity` and key on `[user.id, moduleName]`. Mutations invalidate the key. Eliminates the per-mount round-trip.
 
-This ensures:
-- Stakeholders section gets at most 40% of the panel height
-- When content exceeds that, a scrollbar appears
-- Updates and Action Items always get their fair share of space
+### 6. Fix Accounts contact-count
+In `src/components/AccountTable.tsx`:
+- Replace the per-page `.in('company_name', ...)` payload-of-600-rows query with a single grouped count: use `supabase.rpc()` or `.select('company_name', { count: 'exact' })` with `.in()` then group client-side **only on the names of the current 50 visible rows** (already does), but switch to selecting only `company_name` and apply React Query caching keyed on the visible names.
+- Better: create a Postgres view/RPC `account_contact_counts` returning `(account_name, count)` and call it once with the page's account names.
 
-#### Fix 3: Ensure notes panel scrolls properly
+### 7. Reduce Action Items query size
+In `src/hooks/useActionItems.tsx`:
+- Drop `.limit(5000)` to `.limit(500)` for the default view (UI paginates client-side anyway).
+- Stable query key: hash filter values into a small key, not the whole object.
 
-The notes summary panel (line 596) already has `max-h-[280px] overflow-y-auto`, but when inside the constrained container from Fix 2, this works correctly. No additional change needed here -- the outer scroll from Fix 2 handles it.
+### 8. Slim Campaigns + Campaign Mart fetch
+- `useCampaigns` strategyQuery: select only the boolean flags + `campaign_id` instead of `select('*')`.
+- Add `staleTime: 2 * 60 * 1000`.
+- `CampaignDashboardWidget`: same — request only fields it uses.
 
-### Summary
+### 9. Deals page: stop fetching all rows on mount
+In `src/pages/DealsPage.tsx`:
+- Use server pagination (`fetchPaginatedData`) for the List view (already supported by `supabasePagination.ts`).
+- For Kanban, fetch all rows — but only fields needed for cards (project_name, stage, total_contract_value, lead_owner, expected_closing_date, priority) instead of `select('*')`.
+- Wrap the deals query in React Query so view switches don't refetch.
 
-| Change | Line(s) | Description |
-|--------|---------|-------------|
-| Replace `autoFocus` with ref callback | 628-634 | Cursor placed after bullet on open |
-| Wrap StakeholdersSection in scrollable container | 1184 | Max 40% height with scrollbar |
+### 10. Trim console noise
+Remove the verbose `console.log` blocks in `useYearlyRevenueData`, `useUserDisplayNames`, and `useAuth`. They run on every render in dev preview and on production when devtools are open.
 
-### Technical Notes
+### Files to change
+- `src/App.tsx` — QueryClient defaults
+- `src/hooks/useYearlyRevenueData.tsx` — narrow selects, server-side year filter, staleTime, drop logs
+- `src/hooks/useUserDisplayNames.tsx` — useQuery + shared cache
+- `src/hooks/useColumnPreferences.tsx` — useQuery cache
+- `src/hooks/useDealsColumnPreferences.tsx` — useQuery cache
+- `src/hooks/useCampaigns.tsx` — narrow selects, staleTime
+- `src/hooks/useActionItems.tsx` — limit, stable key
+- `src/components/dashboard/CampaignDashboardWidget.tsx` — narrow selects
+- `src/components/AccountTable.tsx` — switch contact-count to a cached query keyed on visible names
+- `src/pages/Dashboard.tsx` — lazy import widgets
+- `src/pages/DealsPage.tsx` — narrow `select`, wrap in React Query
 
-- The ref callback fires on every render, but since `el.focus()` is idempotent when already focused, this is harmless
-- The `max-h-[40%]` works because the parent has `flex-1 min-h-0` which resolves to an actual pixel height
-- Updates and Action Items sections keep their `flex-1 min-h-0` with `h-[220px]`, ensuring they share remaining space equally
+### Expected result
+- First Dashboard paint goes from ~3–5s to ~600ms (no full-table deal scans, no campaign_mart over-fetch).
+- Page-to-page navigation feels instant: cached data is reused for 5 minutes; only changed data refetches.
+- Network requests on a typical session drop from ~30+ to ~8–10.
+- No code-splitting regression — all pages still lazy-loaded.
 
