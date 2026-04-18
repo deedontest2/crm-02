@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Building2, Users, MessageSquare, TrendingUp,
-  Target, FileText, BarChart3, ArrowRight
+  Target, FileText, BarChart3, ArrowRight, Mail, Phone, Linkedin
 } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -38,6 +38,21 @@ const statusColors: Record<string, string> = {
 
 const stageOrder = ["Not Contacted", "Contacted", "Responded", "Qualified", "Converted"];
 
+const stageBarColors: Record<string, string> = {
+  "Not Contacted": "bg-slate-400",
+  "Contacted": "bg-blue-500",
+  "Responded": "bg-amber-500",
+  "Qualified": "bg-purple-500",
+  "Converted": "bg-emerald-500",
+};
+
+const commTypeStyles: Record<string, { badge: string; icon: any }> = {
+  Email: { badge: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800", icon: Mail },
+  Call: { badge: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800", icon: Phone },
+  Phone: { badge: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800", icon: Phone },
+  LinkedIn: { badge: "bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800", icon: Linkedin },
+};
+
 function parseRegionToCountries(raw: string | null | undefined): string[] {
   if (!raw) return [];
   try {
@@ -57,6 +72,18 @@ function parseRegionToCountries(raw: string | null | undefined): string[] {
     }
   } catch {}
   return [raw];
+}
+
+interface KPIConfig {
+  label: string;
+  value: number | string;
+  icon: any;
+  sub?: string;
+  onClick?: () => void;
+  borderColor: string;
+  iconBg: string;
+  iconColor: string;
+  valueColor: string;
 }
 
 export function CampaignOverview({
@@ -118,80 +145,108 @@ export function CampaignOverview({
   const goal = (campaign.goal || "").trim();
   const notes = (campaign.notes || "").replace(/\[timezone:.+?\]\s*/g, "").trim();
 
-  const KPI = ({ label, value, icon: Icon, sub, onClick }: {
-    label: string; value: number | string; icon: any; sub?: string; onClick?: () => void;
-  }) => (
-    <div
-      className={`rounded-md border bg-card p-2 ${onClick ? "cursor-pointer hover:border-primary/40 transition-colors" : ""}`}
-      onClick={onClick}
-    >
-      <div className="flex items-center justify-between gap-1">
-        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</span>
-        <Icon className="h-3 w-3 text-muted-foreground" />
-      </div>
-      <div className="mt-0.5 text-lg font-semibold leading-tight">{value}</div>
-      {sub && <div className="text-[10px] text-muted-foreground truncate">{sub}</div>}
-    </div>
-  );
+  const kpis: KPIConfig[] = [
+    {
+      label: "Accounts", value: accounts.length, icon: Building2,
+      onClick: () => onTabChange("setup"),
+      borderColor: "border-l-blue-500", iconBg: "bg-blue-100 dark:bg-blue-900/30",
+      iconColor: "text-blue-600 dark:text-blue-400", valueColor: "text-foreground",
+    },
+    {
+      label: "Contacts", value: contacts.length, icon: Users,
+      onClick: () => onTabChange("setup"),
+      borderColor: "border-l-emerald-500", iconBg: "bg-emerald-100 dark:bg-emerald-900/30",
+      iconColor: "text-emerald-600 dark:text-emerald-400", valueColor: "text-foreground",
+    },
+    {
+      label: "Outreach", value: outreachTotal, icon: MessageSquare,
+      sub: `${emailCount} ✉ · ${callCount} ☎ · ${linkedinCount} in`,
+      onClick: () => onTabChange("monitoring"),
+      borderColor: "border-l-purple-500", iconBg: "bg-purple-100 dark:bg-purple-900/30",
+      iconColor: "text-purple-600 dark:text-purple-400", valueColor: "text-foreground",
+    },
+    {
+      label: "Responses", value: responseCount, icon: TrendingUp,
+      sub: contacts.length > 0 ? `${Math.round((responseCount / contacts.length) * 100)}% rate` : undefined,
+      borderColor: "border-l-amber-500", iconBg: "bg-amber-100 dark:bg-amber-900/30",
+      iconColor: "text-amber-600 dark:text-amber-400", valueColor: "text-foreground",
+    },
+    {
+      label: "Deals", value: deals.length, icon: BarChart3,
+      sub: totalDealValue > 0 ? `€${totalDealValue.toLocaleString()}` : undefined,
+      onClick: () => onTabChange("monitoring"),
+      borderColor: "border-l-indigo-500", iconBg: "bg-indigo-100 dark:bg-indigo-900/30",
+      iconColor: "text-indigo-600 dark:text-indigo-400", valueColor: "text-foreground",
+    },
+    {
+      label: "Setup", value: `${strategyProgress}/4`, icon: Target,
+      sub: `${Math.round((strategyProgress / 4) * 100)}% done`,
+      onClick: () => onTabChange("setup"),
+      borderColor: "border-l-rose-500", iconBg: "bg-rose-100 dark:bg-rose-900/30",
+      iconColor: "text-rose-600 dark:text-rose-400", valueColor: "text-foreground",
+    },
+  ];
 
   return (
-    <div className="space-y-3">
-      {/* 6-KPI strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-        <KPI label="Accounts" value={accounts.length} icon={Building2} onClick={() => onTabChange("setup")} />
-        <KPI label="Contacts" value={contacts.length} icon={Users} onClick={() => onTabChange("setup")} />
-        <KPI
-          label="Outreach"
-          value={outreachTotal}
-          icon={MessageSquare}
-          sub={`${emailCount} ✉ · ${callCount} ☎ · ${linkedinCount} in`}
-          onClick={() => onTabChange("monitoring")}
-        />
-        <KPI
-          label="Responses"
-          value={responseCount}
-          icon={TrendingUp}
-          sub={contacts.length > 0 ? `${Math.round((responseCount / contacts.length) * 100)}% rate` : undefined}
-        />
-        <KPI
-          label="Deals"
-          value={deals.length}
-          icon={BarChart3}
-          sub={totalDealValue > 0 ? `€${totalDealValue.toLocaleString()}` : undefined}
-          onClick={() => onTabChange("monitoring")}
-        />
-        <KPI
-          label="Setup"
-          value={`${strategyProgress}/4`}
-          icon={Target}
-          sub={`${Math.round((strategyProgress / 4) * 100)}% done`}
-          onClick={() => onTabChange("setup")}
-        />
+    <div className="space-y-4 w-full">
+      {/* KPI Strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {kpis.map((k) => {
+          const Icon = k.icon;
+          return (
+            <Card
+              key={k.label}
+              className={`border-l-4 ${k.borderColor} ${k.onClick ? "cursor-pointer hover:shadow-md transition-all" : ""}`}
+              onClick={k.onClick}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">{k.label}</p>
+                    <p className={`text-2xl font-bold mt-1 ${k.valueColor}`}>{k.value}</p>
+                    {k.sub && <p className="text-xs text-muted-foreground mt-1 truncate">{k.sub}</p>}
+                  </div>
+                  <div className={`h-10 w-10 rounded-lg ${k.iconBg} flex items-center justify-center shrink-0`}>
+                    <Icon className={`h-5 w-5 ${k.iconColor}`} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {/* Funnel - CSS bars */}
-        <Card className="border">
-          <CardHeader className="py-2">
-            <CardTitle className="text-xs font-medium flex items-center gap-2 cursor-pointer hover:text-primary transition-colors" onClick={() => onTabChange("setup")}>
-              <Users className="h-3.5 w-3.5" /> Contact Funnel <ArrowRight className="h-3 w-3 ml-auto opacity-60" />
+      {/* Funnel + Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Contact Funnel */}
+        <Card className="lg:col-span-7 border-l-4 border-l-emerald-500">
+          <CardHeader className="pb-3">
+            <CardTitle
+              className="text-base font-semibold flex items-center gap-2 cursor-pointer hover:text-primary transition-colors"
+              onClick={() => onTabChange("setup")}
+            >
+              <div className="h-8 w-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                <Users className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              Contact Funnel
+              <ArrowRight className="h-4 w-4 ml-auto opacity-60" />
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-3 pt-0">
+          <CardContent className="p-5 pt-0">
             {contacts.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No contacts added yet</p>
+              <p className="text-sm text-muted-foreground py-6 text-center">No contacts added yet</p>
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-3">
                 {stageData.map((s) => (
-                  <div key={s.stage} className="flex items-center gap-2 text-xs">
-                    <span className="w-24 shrink-0 text-muted-foreground truncate">{s.stage}</span>
-                    <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                  <div key={s.stage} className="flex items-center gap-3 text-sm">
+                    <span className="w-28 shrink-0 text-foreground/80 truncate">{s.stage}</span>
+                    <div className="flex-1 h-3 rounded-full bg-muted overflow-hidden">
                       <div
-                        className="h-full bg-primary rounded-full transition-all"
+                        className={`h-full ${stageBarColors[s.stage]} rounded-full transition-all`}
                         style={{ width: `${(s.count / maxStage) * 100}%` }}
                       />
                     </div>
-                    <span className="w-6 text-right tabular-nums">{s.count}</span>
+                    <span className="w-8 text-right text-sm font-medium tabular-nums">{s.count}</span>
                   </div>
                 ))}
               </div>
@@ -200,29 +255,41 @@ export function CampaignOverview({
         </Card>
 
         {/* Recent Activity */}
-        <Card className="border">
-          <CardHeader className="py-2">
-            <CardTitle className="text-xs font-medium flex items-center gap-2 cursor-pointer hover:text-primary transition-colors" onClick={() => onTabChange("monitoring")}>
-              <MessageSquare className="h-3.5 w-3.5" /> Recent Activity <ArrowRight className="h-3 w-3 ml-auto opacity-60" />
+        <Card className="lg:col-span-5 border-l-4 border-l-purple-500">
+          <CardHeader className="pb-3">
+            <CardTitle
+              className="text-base font-semibold flex items-center gap-2 cursor-pointer hover:text-primary transition-colors"
+              onClick={() => onTabChange("monitoring")}
+            >
+              <div className="h-8 w-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                <MessageSquare className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              </div>
+              Recent Activity
+              <ArrowRight className="h-4 w-4 ml-auto opacity-60" />
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-3 pt-0">
+          <CardContent className="p-5 pt-0">
             {communications.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No activity yet</p>
+              <p className="text-sm text-muted-foreground py-6 text-center">No activity yet</p>
             ) : (
-              <div className="space-y-1">
+              <div className="divide-y divide-border">
                 {communications.slice(0, 5).map((c: any) => {
                   const snippet = (c.subject || c.notes || "").toString().trim();
+                  const style = commTypeStyles[c.communication_type] || commTypeStyles.Email;
                   return (
                     <div
                       key={c.id}
-                      className="flex items-center gap-2 text-xs cursor-pointer hover:bg-muted/50 rounded px-1 py-0.5 transition-colors"
+                      className="flex items-center gap-2 text-sm py-2 cursor-pointer hover:bg-muted/50 rounded-md px-2 -mx-2 transition-colors"
                       onClick={() => onTabChange("monitoring")}
                     >
-                      <Badge variant="outline" className="text-[10px] h-4 px-1 shrink-0">{c.communication_type}</Badge>
-                      <span className="shrink-0 truncate max-w-[100px]">{c.contacts?.contact_name || "Unknown"}</span>
-                      {snippet && <span className="text-muted-foreground truncate flex-1">· {snippet}</span>}
-                      <span className="text-[10px] text-muted-foreground ml-auto whitespace-nowrap">
+                      <Badge variant="outline" className={`text-xs h-6 px-2 shrink-0 ${style.badge}`}>
+                        {c.communication_type}
+                      </Badge>
+                      <span className="shrink-0 truncate max-w-[120px] text-sm font-medium">
+                        {c.contacts?.contact_name || "Unknown"}
+                      </span>
+                      {snippet && <span className="text-sm text-muted-foreground truncate flex-1">· {snippet}</span>}
+                      <span className="text-xs text-muted-foreground ml-auto whitespace-nowrap">
                         {c.communication_date ? format(new Date(c.communication_date), "dd MMM") : "—"}
                       </span>
                     </div>
@@ -234,74 +301,104 @@ export function CampaignOverview({
         </Card>
       </div>
 
-      {/* Outreach Timeline - only when meaningful */}
-      {timelineData.length >= 3 && (
-        <Card className="border">
-          <CardHeader className="py-2">
-            <CardTitle className="text-xs font-medium flex items-center gap-2">
-              <BarChart3 className="h-3.5 w-3.5" /> Outreach Activity
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-2 pt-0">
-            <ResponsiveContainer width="100%" height={120}>
-              <AreaChart data={timelineData} margin={{ left: 0, right: 4, top: 4, bottom: 0 }}>
+      {/* Outreach Timeline — always shown */}
+      <Card className="border-l-4 border-l-indigo-500">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+              <BarChart3 className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            Outreach Activity
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 pt-0">
+          {timelineData.length === 0 ? (
+            <div className="h-[180px] flex items-center justify-center text-sm text-muted-foreground">
+              No outreach activity yet
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={180}>
+              <AreaChart data={timelineData} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="week" tick={{ fontSize: 10 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 10 }} width={24} />
+                <XAxis dataKey="week" tick={{ fontSize: 12 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} width={28} />
                 <Tooltip formatter={(v: number) => [v, "Messages"]} />
                 <Area type="monotone" dataKey="count" stroke="hsl(var(--primary))" fill="hsl(var(--primary) / 0.15)" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Unified details card */}
-      <Card className="border">
-        <CardHeader className="py-2">
-          <CardTitle className="text-xs font-medium flex items-center gap-2">
-            <FileText className="h-3.5 w-3.5" /> Campaign Details
+      {/* Campaign Details */}
+      <Card className="border-l-4 border-l-slate-400">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <FileText className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+            </div>
+            Campaign Details
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-3 pt-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-xs">
-            <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground">Type</span>
-              <span className="font-medium">{campaign.campaign_type || "—"}</span>
-            </div>
-            <div className="flex justify-between gap-2 items-center">
-              <span className="text-muted-foreground">Status</span>
-              <Badge className={`${statusColors[campaign.status || "Draft"]} text-[10px] h-4 px-1.5`} variant="secondary">{campaign.status}</Badge>
-            </div>
-            {countries.length > 0 && (
-              <div className="flex justify-between gap-2 md:col-span-2">
-                <span className="text-muted-foreground shrink-0">Region</span>
-                <div className="flex flex-wrap gap-1 justify-end">
-                  {countries.slice(0, 8).map((c) => (
-                    <Badge key={c} variant="outline" className="text-[10px] h-4 px-1.5">{c}</Badge>
-                  ))}
-                  {countries.length > 8 && <Badge variant="outline" className="text-[10px] h-4 px-1.5">+{countries.length - 8}</Badge>}
+        <CardContent className="p-5 pt-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left column: meta */}
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium mb-1">Type</p>
+                <p className="text-sm font-medium">{campaign.campaign_type || "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium mb-1">Status</p>
+                <Badge className={`${statusColors[campaign.status || "Draft"]} h-6 px-2.5 text-xs`} variant="secondary">
+                  {campaign.status || "Draft"}
+                </Badge>
+              </div>
+              {countries.length > 0 && (
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium mb-1">Region</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {countries.slice(0, 12).map((c) => (
+                      <Badge key={c} variant="outline" className="h-6 px-2.5 text-xs bg-muted/40">{c}</Badge>
+                    ))}
+                    {countries.length > 12 && (
+                      <Badge variant="outline" className="h-6 px-2.5 text-xs bg-muted/40">+{countries.length - 12}</Badge>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
-            {description && (
-              <div className="md:col-span-2">
-                <p className="text-muted-foreground mb-0.5">Description</p>
-                <p className="text-foreground/90 whitespace-pre-wrap leading-snug">{description}</p>
-              </div>
-            )}
-            {goal && goal !== description && (
-              <div className="md:col-span-2">
-                <p className="text-muted-foreground mb-0.5">Goal</p>
-                <p className="text-foreground/90 whitespace-pre-wrap leading-snug">{goal}</p>
-              </div>
-            )}
-            {notes && (
-              <div className="md:col-span-2">
-                <p className="text-muted-foreground mb-0.5">Notes</p>
-                <p className="text-foreground/90 whitespace-pre-wrap leading-snug">{notes}</p>
-              </div>
-            )}
+              )}
+            </div>
+
+            {/* Right column: long text */}
+            <div className="space-y-4">
+              {description && (
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium mb-1">Description</p>
+                  <div className="bg-muted/30 rounded-md p-3 text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
+                    {description}
+                  </div>
+                </div>
+              )}
+              {goal && goal !== description && (
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium mb-1">Goal</p>
+                  <div className="bg-muted/30 rounded-md p-3 text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
+                    {goal}
+                  </div>
+                </div>
+              )}
+              {notes && (
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium mb-1">Notes</p>
+                  <div className="bg-muted/30 rounded-md p-3 text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
+                    {notes}
+                  </div>
+                </div>
+              )}
+              {!description && !goal && !notes && (
+                <p className="text-sm text-muted-foreground italic">No description, goal, or notes added yet.</p>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
