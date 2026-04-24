@@ -381,6 +381,18 @@ export default function CampaignDetail() {
                     regionCount: (() => { try { const arr = JSON.parse(campaign.region || ""); return Array.isArray(arr) ? arr.length : 0; } catch { return campaign.region ? 1 : 0; } })(),
                     accountCount: detail.accounts.length,
                     contactCount: detail.contacts.length,
+                    reachableOnPrimary: (() => {
+                      const ch = (campaign.primary_channel || "").trim();
+                      if (!ch) return detail.contacts.length;
+                      const has = (c: any) => {
+                        const con = c.contacts || c;
+                        if (ch === "Email") return !!con?.email?.trim();
+                        if (ch === "LinkedIn") return !!con?.linkedin?.trim();
+                        if (ch === "Phone" || ch === "Call") return !!con?.phone_no?.trim();
+                        return true;
+                      };
+                      return detail.contacts.filter(has).length;
+                    })(),
                   }}
                 />
               </Suspense>
