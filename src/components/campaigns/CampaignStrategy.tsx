@@ -237,7 +237,18 @@ export function CampaignStrategy({ campaignId, campaign, isStrategyComplete, upd
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent className="data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up overflow-hidden">
-                <div className="pt-1 pb-3 px-3">
+                <div className="pt-1 pb-3 px-3 space-y-3">
+                  {(() => {
+                    const hint = validateSection(section.key);
+                    if (!section.done && hint) {
+                      return (
+                        <div className={`text-[12px] rounded-md px-3 py-2 ${sectionStyles[section.key].header} ${sectionStyles[section.key].icon}`}>
+                          {hint}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                   {section.key === "region" && <CampaignRegion campaign={campaign} />}
                   {section.key === "audience" && (
                     <CampaignAudience
@@ -267,6 +278,29 @@ export function CampaignStrategy({ campaignId, campaign, isStrategyComplete, upd
                       onSaveTimingNotes={handleSaveTimingNotes}
                     />
                   )}
+                  {/* Footer "Mark as Done" — bigger affordance than the tiny header circle. */}
+                  <div className="pt-2 border-t flex justify-end">
+                    {section.done ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleUnmark(section.flag, section.label)}
+                        className="text-xs gap-1.5"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+                        Marked done — click to unmark
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={() => handleMarkDone(section.flag, section.label, section.key)}
+                        className="text-xs gap-1.5"
+                      >
+                        <Circle className="h-3.5 w-3.5" />
+                        Mark {section.label} as Done
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CollapsibleContent>
             </Collapsible>
