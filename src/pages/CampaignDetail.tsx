@@ -22,6 +22,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { CampaignModal } from "@/components/campaigns/CampaignModal";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { campaignTypeLabel } from "@/utils/campaignTypeLabel";
 
 // Lazy-load all heavy tab content (incl. Overview which pulls recharts)
 const CampaignOverview = lazy(() =>
@@ -333,12 +334,12 @@ export default function CampaignDetail() {
       {/* 4 Tabs */}
       <div className="flex-1 overflow-hidden px-6 pt-2 pb-3 flex flex-col min-h-0">
         <Tabs value={activeTab} onValueChange={(tab) => { setActiveTab(tab); if (tab === "overview") setDrilldown(null); }} className="h-full flex flex-col min-h-0">
-          <TabsList className="h-8 inline-flex w-fit gap-1 bg-transparent border-b rounded-none p-0 justify-start">
-            <TabsTrigger value="overview" className="text-xs h-8 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">Overview</TabsTrigger>
-            <TabsTrigger value="setup" className="text-xs h-8 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">Setup</TabsTrigger>
-            <TabsTrigger value="monitoring" className="text-xs h-8 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">Monitoring</TabsTrigger>
-            <TabsTrigger value="replyHealth" className="text-xs h-8 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">Reply Health</TabsTrigger>
-            <TabsTrigger value="actionItems" className="text-xs h-8 px-3 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">Action Items</TabsTrigger>
+          <TabsList className="h-10 inline-flex w-fit gap-1 bg-transparent border-b rounded-none p-0 justify-start">
+            <TabsTrigger value="overview" className="text-sm font-medium h-10 px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">Overview</TabsTrigger>
+            <TabsTrigger value="setup" className="text-sm font-medium h-10 px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">Setup</TabsTrigger>
+            <TabsTrigger value="monitoring" className="text-sm font-medium h-10 px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">Monitoring</TabsTrigger>
+            <TabsTrigger value="replyHealth" className="text-sm font-medium h-10 px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">Reply Health</TabsTrigger>
+            <TabsTrigger value="actionItems" className="text-sm font-medium h-10 px-4 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none">Action Items</TabsTrigger>
           </TabsList>
 
           <div className="flex-1 overflow-auto mt-2 min-h-0">
