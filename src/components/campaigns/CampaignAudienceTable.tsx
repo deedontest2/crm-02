@@ -808,61 +808,6 @@ export function CampaignAudienceTable({ campaignId, isCampaignEnded, selectedReg
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            {filteredAccounts.length > 0 && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={toggleExpandAll} aria-label={allExpanded ? "Collapse all" : "Expand all"}>
-                    {allExpanded ? <ChevronsDownUp className="h-4 w-4" /> : <ChevronsUpDown className="h-4 w-4" />}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent className="text-xs">{allExpanded ? "Collapse all" : "Expand all"}</TooltipContent>
-              </Tooltip>
-            )}
-            {(campaignContacts.length > 0 || campaignAccounts.length > 0) && (
-              <DropdownMenu>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="More">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent className="text-xs">More actions</TooltipContent>
-                </Tooltip>
-                <DropdownMenuContent align="end" className="text-xs">
-                  <DropdownMenuLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                    Export scope
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onClick={(e) => { e.preventDefault(); setExportScope("filtered"); }}
-                    className="gap-2"
-                  >
-                    <span className={`inline-block h-2 w-2 rounded-full ${exportScope === "filtered" ? "bg-primary" : "bg-muted-foreground/30"}`} />
-                    Filtered view
-                    {(searchQuery || channelFilter !== "all") && (
-                      <span className="ml-auto text-[10px] text-muted-foreground">
-                        {channelFilter === "all" ? "search" : channelFilter}
-                      </span>
-                    )}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={(e) => { e.preventDefault(); setExportScope("all"); }}
-                    className="gap-2"
-                  >
-                    <span className={`inline-block h-2 w-2 rounded-full ${exportScope === "all" ? "bg-primary" : "bg-muted-foreground/30"}`} />
-                    All contacts
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => handleExport("csv")} className="gap-2">
-                    <FileSpreadsheet className="h-3.5 w-3.5" /> Reachability CSV
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExport("pdf")} className="gap-2">
-                    <FileText className="h-3.5 w-3.5" /> Reachability PDF
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
             {!isCampaignEnded && (
               <>
                 <span className="h-5 w-px bg-border mx-0.5" aria-hidden />
