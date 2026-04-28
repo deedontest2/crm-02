@@ -731,46 +731,6 @@ export function CampaignAudienceTable({ campaignId, isCampaignEnded, selectedReg
                 <AlertCircle className="h-3 w-3" /> No regions selected
               </span>
             )}
-            {totalContacts > 0 && (
-              <ToggleGroup
-                type="single"
-                value={channelFilter}
-                onValueChange={(v) => v && setChannelFilter(v as ChannelFilter)}
-                size="sm"
-                className="gap-0.5 rounded-md border bg-card p-0.5"
-              >
-                {showEmail && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <ToggleGroupItem value="Email" className="h-6 px-1.5 text-[11px] gap-1 tabular-nums">
-                        <Mail className="h-3 w-3" /> {reach.email}
-                      </ToggleGroupItem>
-                    </TooltipTrigger>
-                    <TooltipContent className="text-xs">Email · {reach.email} reachable</TooltipContent>
-                  </Tooltip>
-                )}
-                {showLinkedIn && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <ToggleGroupItem value="LinkedIn" className="h-6 px-1.5 text-[11px] gap-1 tabular-nums">
-                        <Linkedin className="h-3 w-3" /> {reach.linkedin}
-                      </ToggleGroupItem>
-                    </TooltipTrigger>
-                    <TooltipContent className="text-xs">LinkedIn · {reach.linkedin} reachable</TooltipContent>
-                  </Tooltip>
-                )}
-                {showPhone && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <ToggleGroupItem value="Phone" className="h-6 px-1.5 text-[11px] gap-1 tabular-nums">
-                        <Phone className="h-3 w-3" /> {reach.phone}
-                      </ToggleGroupItem>
-                    </TooltipTrigger>
-                    <TooltipContent className="text-xs">Phone · {reach.phone} reachable</TooltipContent>
-                  </Tooltip>
-                )}
-              </ToggleGroup>
-            )}
             {(selectedAccountRowIds.size > 0 || selectedContactRowIds.size > 0) && !isCampaignEnded && (
               <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-2 py-1">
                 <span className="text-[11px] font-medium">
