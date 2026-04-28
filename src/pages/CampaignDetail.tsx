@@ -238,17 +238,10 @@ export default function CampaignDetail() {
       <div className="flex-shrink-0 px-6 border-b bg-background">
         <div className="h-16 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
-            <button
-              onClick={() => navigate("/campaigns")}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
-            >
-              Campaigns
-            </button>
-            <span className="text-xs text-muted-foreground">›</span>
             <div className="min-w-0 flex items-baseline gap-3">
               <h1 className="text-xl font-semibold text-foreground truncate">{campaign.campaign_name}</h1>
               <p className="text-sm text-muted-foreground truncate hidden md:block">
-                {campaignTypeLabel(campaign.campaign_type)} · {campaign.owner ? displayNames[campaign.owner] || "—" : "—"}
+                {campaignTypeLabel(campaign.campaign_type)}
                 {campaign.start_date && campaign.end_date && (
                   <> · {format(new Date(campaign.start_date + "T00:00:00"), "d MMM")} → {format(new Date(campaign.end_date + "T00:00:00"), "d MMM")}</>
                 )}
