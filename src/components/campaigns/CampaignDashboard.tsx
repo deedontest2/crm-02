@@ -572,41 +572,8 @@ export function CampaignDashboard({ campaigns, getStrategyProgress, getStrategyD
           })}
         </div>
 
-        {/* Section 1 — Get Started strip (no comms yet) OR Insights row (Top Active + Email Engagement) */}
-        {totalCommsDistinct === 0 ? (
-          <Card className="border shadow-none bg-gradient-to-r from-primary/5 to-transparent">
-            <CardContent className="p-3 flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="h-9 w-9 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
-                  <Zap className="h-4 w-4 text-primary" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">
-                    {totalAccountsDistinct === 0 && totalContactsDistinct === 0
-                      ? "Your campaigns are ready — add accounts and contacts to start outreach."
-                      : "Setup looks good — send your first email to start tracking engagement."}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    Top performers and engagement charts appear here once data flows in.
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => navigate("/accounts")}>
-                  <Building2 className="h-3.5 w-3.5 mr-1.5" /> Add accounts
-                </Button>
-                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => navigate("/contacts")}>
-                  <Users className="h-3.5 w-3.5 mr-1.5" /> Add contacts
-                </Button>
-                {topCampaigns.length === 0 && campaigns[0] && (
-                  <Button size="sm" className="h-8 text-xs" onClick={() => navigate(`/campaigns/${campaignSlugById[campaigns[0].id] || slugify(campaigns[0].campaign_name)}`)}>
-                    Open campaign <ExternalLink className="h-3 w-3 ml-1.5" />
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
+        {/* Section 1 — Insights row (Top Active + Email Engagement) */}
+        {totalCommsDistinct > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {/* Top Active Campaigns */}
           <Card className="border shadow-none min-h-[260px] flex flex-col">
