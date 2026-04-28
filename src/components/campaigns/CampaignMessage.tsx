@@ -556,10 +556,9 @@ export function CampaignMessage({ campaignId, campaign, selectedRegions = [], au
       {regularEmailTemplates.length === 0 ? (
           <p className="text-xs text-muted-foreground py-1">No email templates yet.</p>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             {regularEmailTemplates.map((t) => {
-              let displayBody = t.body || "";
-              displayBody = displayBody.replace(/\n?---SIGNATURE---\s*/g, "\n\n").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").trim();
+              const typeLabel = t.email_type || "Initial";
               return (
                 <div
                   key={t.id}
@@ -574,21 +573,31 @@ export function CampaignMessage({ campaignId, campaign, selectedRegions = [], au
                       openEmailEdit(t);
                     }
                   }}
-                  className="group cursor-pointer rounded-md border border-border bg-card p-3 shadow-sm transition-colors hover:border-primary/50 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="group relative cursor-pointer overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-all hover:border-primary/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <Badge variant="secondary" className="text-[10px] shrink-0 px-1.5 py-0">{t.email_type || "Initial"}</Badge>
-                      <span className="font-semibold text-xs truncate text-foreground group-hover:text-primary">{t.template_name}</span>
+                  <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-primary/70 to-primary/30" />
+                  <div className="flex items-start gap-3 pl-4 pr-2 py-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <Badge variant="secondary" className="text-[10px] font-medium px-1.5 py-0 shrink-0">{typeLabel}</Badge>
+                        <span className="font-semibold text-sm truncate text-foreground group-hover:text-primary transition-colors">
+                          {t.template_name}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">
+                        <span className="font-medium text-foreground/70">Subject:</span> {t.subject || <span className="italic">No subject</span>}
+                      </p>
                     </div>
-                    <div className="flex items-center shrink-0" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+                    <div className="shrink-0" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-6 w-6" aria-label={`Actions for ${t.template_name}`}><MoreHorizontal className="h-3 w-3" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Actions for ${t.template_name}`}>
+                            <MoreHorizontal className="h-3.5 w-3.5" />
+                          </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => openEmailEdit(t)}><Pencil className="h-3.5 w-3.5 mr-2" /> Edit</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => copyToClipboard(`Subject: ${t.subject}\n\n${displayBody}`, { title: "Email copied", description: "Subject and body copied to clipboard." })}><Copy className="h-3.5 w-3.5 mr-2" /> Copy</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => copyToClipboard(`Subject: ${t.subject}\n\n${(t.body || "").replace(/<[^>]+>/g, " ")}`, { title: "Email copied", description: "Subject and body copied to clipboard." })}><Copy className="h-3.5 w-3.5 mr-2" /> Copy</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => duplicateEmailTemplate(t)}><CopyPlus className="h-3.5 w-3.5 mr-2" /> Duplicate</DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => confirmDeleteEmailTemplate(t.id, t.template_name)} className="text-destructive"><Trash2 className="h-3.5 w-3.5 mr-2" /> Delete</DropdownMenuItem>
@@ -596,8 +605,6 @@ export function CampaignMessage({ campaignId, campaign, selectedRegions = [], au
                       </DropdownMenu>
                     </div>
                   </div>
-                  <p className="text-[11px] font-medium text-foreground/90 mb-1 truncate">Sub: {t.subject}</p>
-                  <p className="text-[11px] leading-5 text-muted-foreground line-clamp-2">{displayBody || "No body content"}</p>
                 </div>
               );
             })}
