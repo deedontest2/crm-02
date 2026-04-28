@@ -739,12 +739,6 @@ export function CampaignAudienceTable({ campaignId, isCampaignEnded, selectedReg
                 size="sm"
                 className="gap-0.5 rounded-md border bg-card p-0.5"
               >
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <ToggleGroupItem value="all" className="h-6 px-1.5 text-[11px]">All</ToggleGroupItem>
-                  </TooltipTrigger>
-                  <TooltipContent className="text-xs">All contacts</TooltipContent>
-                </Tooltip>
                 {showEmail && (
                   <Tooltip>
                     <TooltipTrigger asChild>
