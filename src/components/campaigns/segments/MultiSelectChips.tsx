@@ -149,7 +149,12 @@ export function MultiSelectChips({
             <ChevronDown className="ml-auto h-3 w-3 text-muted-foreground shrink-0" />
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-72 p-0" align="start">
+        <PopoverContent
+          className="w-72 p-0"
+          align="start"
+          onWheel={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+        >
           <Command shouldFilter={false}>
             <CommandInput
               placeholder={`Search ${label.toLowerCase()}...`}
