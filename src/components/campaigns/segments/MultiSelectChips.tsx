@@ -200,7 +200,7 @@ export function MultiSelectChips({
                 </Button>
               </div>
             </div>
-            <CommandList className="max-h-56">
+            <CommandList className="max-h-72 overflow-y-auto overscroll-contain">
               <CommandEmpty>
                 {allowCustom && search.trim() ? (
                   <Button size="sm" variant="ghost" onClick={addCustom} className="w-full justify-start text-xs h-7">
